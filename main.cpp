@@ -2,6 +2,7 @@
 #include <charconv>
 #include <complex>
 #include <cstdint>
+#include <cstring>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -23,6 +24,7 @@ enum OpCode : uint8_t {
     OpMul = 0x34,
     OpDiv = 0x35,
     OpSqrt = 0x36,
+    OpFtoi = 0x37,
     OpJmp = 0x50,
     OpJg = 0x51,
     OpStore = 0x52,
@@ -40,6 +42,7 @@ void executeIncDec(VM &, OpCode);
 void executeAddSub(VM &, OpCode);
 void executeMulDiv(VM &, OpCode);
 void executeSqrt(VM &, OpCode);
+void executeFtoi(VM &, OpCode);
 void executeJmp(VM &, OpCode);
 void executeJg(VM &, OpCode);
 void executeStore(VM &, OpCode);
@@ -57,6 +60,7 @@ const std::unordered_map<OpCode, std::tuple<std::string, void(*)(VM &, OpCode)>>
     {OpMul, std::make_tuple("mul", executeMulDiv)},
     {OpDiv, std::make_tuple("div", executeMulDiv)},
     {OpSqrt, std::make_tuple("sqrt", executeSqrt)},
+    {OpFtoi, std::make_tuple("ftoi", executeFtoi)},
     {OpJmp, std::make_tuple("jmp", executeJmp)},
     {OpJg, std::make_tuple("jg", executeJg)},
     {OpStore, std::make_tuple("store", executeStore)},
@@ -200,11 +204,11 @@ struct SourceFile final {
 };
 
 std::string_view trim(const std::string_view text) {
-    if (text.empty()) {
-        return {};
-    }
     const auto start = text.find_first_not_of(' ');
     const auto end = text.find_last_not_of(' ');
+    if (start == std::string_view::npos || end == std::string_view::npos) {
+        return {};
+    }
     return {text.data() + start, end - start + 1};
 }
 
@@ -351,7 +355,21 @@ void executeSqrt(VM &vm, const OpCode) {
     }
     const auto value = vm.stack.top();
     vm.stack.pop();
-    vm.stack.push(static_cast<int32_t>(std::round(std::sqrt(value))));
+    const auto sqrt = static_cast<float>(std::sqrt(value));
+    int32_t internal = 0;
+    memcpy(&internal, &sqrt, 4);
+    vm.stack.push(internal);
+}
+
+void executeFtoi(VM &vm, const OpCode) {
+    if (vm.stack.count() < 1) {
+        throw std::logic_error("Stack underflow");
+    }
+    const auto value = vm.stack.top();
+    vm.stack.pop();
+    float floatValue = 0;
+    memcpy(&floatValue, &value, 4);
+    vm.stack.push(static_cast<int32_t>(floatValue));
 }
 
 void executeJmp(VM &vm, const OpCode) {
@@ -596,6 +614,7 @@ label calc_root1
     push -3
     load
     sqrt
+    ftoi
 
     add
 
@@ -641,6 +660,7 @@ label calc_root2
     push -3
     load
     sqrt
+    ftoi
 
     push -1
     mul
