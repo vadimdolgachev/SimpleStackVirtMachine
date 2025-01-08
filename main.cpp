@@ -4,15 +4,12 @@
 #include <cstdint>
 #include <format>
 #include <fstream>
-#include <functional>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -68,7 +65,7 @@ const std::unordered_map<OpCode, std::tuple<std::string, void(*)(VM &, OpCode)>>
     {OpHalt, std::make_tuple("halt", executeHalt)},
 };
 
-class Stack {
+class Stack final {
 public:
     explicit Stack(const size_t capacity) :
         mem(capacity, 0xFF) {
@@ -123,45 +120,6 @@ struct VM final {
     std::vector<uint8_t> mem;
     Stack stack;
     uint32_t pc = 0;
-};
-
-class Operation {
-public:
-    explicit Operation(std::string name) :
-        name(std::move(name)) {
-
-    }
-
-    virtual ~Operation() = default;
-    virtual void execute(VM &vm) = 0;
-
-    std::string name;
-};
-
-class PushOperation final : public Operation {
-public:
-    explicit PushOperation(const std::string &name) :
-        Operation(name) {
-    }
-
-    void execute(VM &vm) override {
-        (void)vm;
-    }
-};
-
-struct Instruction2 {
-    Instruction2(std::string name, std::unique_ptr<Operation> executor):
-        name(std::move(name)), executor(std::move(executor)) {
-
-    }
-
-    Instruction2(const Instruction2 &o) = delete;
-    Instruction2 &operator=(const Instruction2 &) = delete;
-    Instruction2(Instruction2 &&) = default;
-    Instruction2 &operator=(Instruction2 &&) = default;
-
-    std::string name;
-    std::unique_ptr<Operation> executor;
 };
 
 class BinaryStream final : public std::istream {
