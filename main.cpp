@@ -100,7 +100,11 @@ public:
 
 #if __GNUC__ > 13 || __clang_major__ > 17
     template<typename Self>
-    auto &operator[](this Self &&self, const size_t index) {
+    auto operator[](this Self &&self, const size_t index) ->
+    std::conditional_t<
+        std::is_rvalue_reference_v<Self &&>,
+        std::remove_reference_t<decltype(self.mem[index])>, // do not return dangling reference
+        decltype(self.mem[index])> {
         return self.mem[index];
     }
 #else
