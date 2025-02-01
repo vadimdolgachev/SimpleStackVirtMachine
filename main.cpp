@@ -98,13 +98,20 @@ public:
         return index;
     }
 
-    int32_t operator[](const size_t index) const {
+#if __GNUC__ > 13 || __clang_major__ > 17
+    template<typename Self>
+    auto &operator[](this Self &&self, const size_t index) {
+        return self.mem[index];
+    }
+#else
+    const int32_t &operator[](const size_t index) const {
         return mem[index];
     }
 
     int32_t &operator[](const size_t index) {
-        return mem[index];
+        return const_cast<int32_t &>(static_cast<const Stack *>(this)->operator [](index));
     }
+#endif
 
 private:
     std::vector<int32_t> mem;
@@ -356,8 +363,9 @@ void executeSqrt(VM &vm, const OpCode) {
     const auto value = vm.stack.top();
     vm.stack.pop();
     const auto sqrt = static_cast<float>(std::sqrt(value));
+    static_assert(sizeof(float) == sizeof(int32_t));
     int32_t internal = 0;
-    memcpy(&internal, &sqrt, 4);
+    memcpy(&internal, &sqrt, sizeof(int32_t));
     vm.stack.push(internal);
 }
 
@@ -368,7 +376,8 @@ void executeFtoi(VM &vm, const OpCode) {
     const auto value = vm.stack.top();
     vm.stack.pop();
     float floatValue = 0;
-    memcpy(&floatValue, &value, 4);
+    static_assert(sizeof(float) == sizeof(int32_t));
+    memcpy(&floatValue, &value, sizeof(float));
     vm.stack.push(static_cast<int32_t>(floatValue));
 }
 
